@@ -13,6 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Boost REQUIRED COMPONENTS filesystem program_options system)
 include_directories(${Boost_INCLUDE_DIRS})
 
+find_package(OpenCV REQUIRED)
+
 find_package(Ceres REQUIRED)
 include_directories(${CERES_INCLUDE_DIRS})
 
