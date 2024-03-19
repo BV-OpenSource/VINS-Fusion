@@ -7,6 +7,7 @@
  * you may not use this file except in compliance with the License.
  *******************************************************/
 
+#include <yaml-cpp/yaml.h>
 #include "parameters.h"
 
 double INIT_DEPTH;
@@ -73,47 +74,44 @@ void readParameters(std::string config_file)
     }
     fclose(fh);
 
-    cv::FileStorage fsSettings(config_file, cv::FileStorage::READ);
-    if(!fsSettings.isOpened())
-    {
-        std::cerr << "ERROR: Wrong path to settings" << std::endl;
-    }
+    YAML::Node fsSettings = YAML::LoadFile(config_file);
 
-    fsSettings["image0_topic"] >> IMAGE0_TOPIC;
-    fsSettings["image1_topic"] >> IMAGE1_TOPIC;
-    MAX_CNT = fsSettings["max_cnt"];
-    MIN_DIST = fsSettings["min_dist"];
-    F_THRESHOLD = fsSettings["F_threshold"];
-    SHOW_TRACK = fsSettings["show_track"];
-    FLOW_BACK = fsSettings["flow_back"];
+    cout << fsSettings["image0_topic"].as<std::string>() << endl;
+    IMAGE0_TOPIC = fsSettings["image0_topic"].as<std::string>();
+    IMAGE1_TOPIC = fsSettings["image1_topic"].as<std::string>();
+    MAX_CNT = fsSettings["max_cnt"].as<int>();
+    MIN_DIST = fsSettings["min_dist"].as<int>();
+    F_THRESHOLD = fsSettings["F_threshold"].as<double>();
+    SHOW_TRACK = fsSettings["show_track"].as<int>();
+    FLOW_BACK = fsSettings["flow_back"].as<int>();
 
-    MULTIPLE_THREAD = fsSettings["multiple_thread"];
+    MULTIPLE_THREAD = fsSettings["multiple_thread"].as<int>();
 
-    USE_IMU = fsSettings["imu"];
+    USE_IMU = fsSettings["imu"].as<int>();
     printf("USE_IMU: %d\n", USE_IMU);
     if(USE_IMU)
     {
-        fsSettings["imu_topic"] >> IMU_TOPIC;
+        IMU_TOPIC = fsSettings["imu_topic"].as<std::string>();
         printf("IMU_TOPIC: %s\n", IMU_TOPIC.c_str());
-        ACC_N = fsSettings["acc_n"];
-        ACC_W = fsSettings["acc_w"];
-        GYR_N = fsSettings["gyr_n"];
-        GYR_W = fsSettings["gyr_w"];
-        G.z() = fsSettings["g_norm"];
+        ACC_N = fsSettings["acc_n"].as<double>();
+        ACC_W = fsSettings["acc_w"].as<double>();
+        GYR_N = fsSettings["gyr_n"].as<double>();
+        GYR_W = fsSettings["gyr_w"].as<double>();
+        G.z() = fsSettings["g_norm"].as<double>();
     }
 
-    SOLVER_TIME = fsSettings["max_solver_time"];
-    NUM_ITERATIONS = fsSettings["max_num_iterations"];
-    MIN_PARALLAX = fsSettings["keyframe_parallax"];
+    SOLVER_TIME = fsSettings["max_solver_time"].as<double>();
+    NUM_ITERATIONS = fsSettings["max_num_iterations"].as<int>();
+    MIN_PARALLAX = fsSettings["keyframe_parallax"].as<double>();
     MIN_PARALLAX = MIN_PARALLAX / FOCAL_LENGTH;
 
-    fsSettings["output_path"] >> OUTPUT_FOLDER;
+    OUTPUT_FOLDER = fsSettings["output_path"].as<std::string>();
     VINS_RESULT_PATH = OUTPUT_FOLDER + "/vio.csv";
     std::cout << "result path " << VINS_RESULT_PATH << std::endl;
     std::ofstream fout(VINS_RESULT_PATH, std::ios::out);
     fout.close();
 
-    ESTIMATE_EXTRINSIC = fsSettings["estimate_extrinsic"];
+    ESTIMATE_EXTRINSIC = fsSettings["estimate_extrinsic"].as<int>();
     if (ESTIMATE_EXTRINSIC == 2)
     {
         ROS_WARN("have no prior about extrinsic param, calibrate extrinsic param");
@@ -121,7 +119,7 @@ void readParameters(std::string config_file)
         TIC.push_back(Eigen::Vector3d::Zero());
         EX_CALIB_RESULT_PATH = OUTPUT_FOLDER + "/extrinsic_parameter.csv";
     }
-    else 
+    else
     {
         if ( ESTIMATE_EXTRINSIC == 1)
         {
@@ -131,15 +129,17 @@ void readParameters(std::string config_file)
         if (ESTIMATE_EXTRINSIC == 0)
             ROS_WARN(" fix extrinsic param ");
 
-        cv::Mat cv_T;
-        fsSettings["body_T_cam0"] >> cv_T;
         Eigen::Matrix4d T;
-        cv::cv2eigen(cv_T, T);
+        for(int i=0; i<4; i++) {
+            for(int j=0; j<4; j++) {
+                T(i,j) = fsSettings["body_T_cam0"]["data"][4*i+j].as<double>();
+            }
+        }
         RIC.push_back(T.block<3, 3>(0, 0));
         TIC.push_back(T.block<3, 1>(0, 3));
-    } 
+    }
     
-    NUM_OF_CAM = fsSettings["num_of_cam"];
+    NUM_OF_CAM = fsSettings["num_of_cam"].as<int>();
     printf("camera number %d\n", NUM_OF_CAM);
 
     if(NUM_OF_CAM != 1 && NUM_OF_CAM != 2)
@@ -148,12 +148,11 @@ void readParameters(std::string config_file)
         assert(0);
     }
 
-
     int pn = config_file.find_last_of('/');
     std::string configPath = config_file.substr(0, pn);
     
     std::string cam0Calib;
-    fsSettings["cam0_calib"] >> cam0Calib;
+    cam0Calib = fsSettings["cam0_calib"].as<std::string>();
     std::string cam0Path = configPath + "/" + cam0Calib;
     CAM_NAMES.push_back(cam0Path);
 
@@ -161,15 +160,18 @@ void readParameters(std::string config_file)
     {
         STEREO = 1;
         std::string cam1Calib;
-        fsSettings["cam1_calib"] >> cam1Calib;
-        std::string cam1Path = configPath + "/" + cam1Calib; 
+        cam1Calib = fsSettings["cam1_calib"].as<std::string>();
+        std::string cam1Path = configPath + "/" + cam1Calib;
         //printf("%s cam1 path\n", cam1Path.c_str() );
         CAM_NAMES.push_back(cam1Path);
         
-        cv::Mat cv_T;
-        fsSettings["body_T_cam1"] >> cv_T;
+
         Eigen::Matrix4d T;
-        cv::cv2eigen(cv_T, T);
+        for(int i=0; i<4; i++) {
+            for(int j=0; j<4; j++) {
+                T(i,j) = fsSettings["body_T_cam1"]["data"][4*i+j].as<double>();
+            }
+        }
         RIC.push_back(T.block<3, 3>(0, 0));
         TIC.push_back(T.block<3, 1>(0, 3));
     }
@@ -178,15 +180,15 @@ void readParameters(std::string config_file)
     BIAS_ACC_THRESHOLD = 0.1;
     BIAS_GYR_THRESHOLD = 0.1;
 
-    TD = fsSettings["td"];
-    ESTIMATE_TD = fsSettings["estimate_td"];
+    TD = fsSettings["td"].as<double>();
+    ESTIMATE_TD = fsSettings["estimate_td"].as<int>();
     if (ESTIMATE_TD)
         ROS_INFO_STREAM("Unsynchronized sensors, online estimate time offset, initial td: " << TD);
     else
         ROS_INFO_STREAM("Synchronized sensors, fix time offset: " << TD);
 
-    ROW = fsSettings["image_height"];
-    COL = fsSettings["image_width"];
+    ROW = fsSettings["image_height"].as<int>();
+    COL = fsSettings["image_width"].as<int>();
     ROS_INFO("ROW: %d COL: %d ", ROW, COL);
 
     if(!USE_IMU)
@@ -195,6 +197,4 @@ void readParameters(std::string config_file)
         ESTIMATE_TD = 0;
         printf("no imu, fix extrinsic param; no time offset calibration\n");
     }
-
-    fsSettings.release();
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="argID"             default="0"/>
+    <arg name="argVehicle"        default="heifu"/>
+    <arg name="argNamespace"      default="$(arg argVehicle)$(arg argID)"/>
+
+    <arg name="argNodeRate"       default="20.0"/>
+    <arg name="argConfigFile"     default="$(find vins)/../config/oak_d/conf.yaml"/>
+
+    <node name="vins_estimator" type="vins_node" pkg="vins" output="screen" required="true" ns="$(arg argNamespace)">
+        <param name="paramNodeRate"       type="double"   value="$(arg argNodeRate)"/>
+        <param name="paramConfigFile"     type="string"   value="$(arg argConfigFile)"/>
+    </node>
+
+</launch>

@@ -9,6 +9,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include "camodocal/gpl/gpl.h"
+#include <yaml-cpp/yaml.h>
 
 namespace camodocal
 {
@@ -144,17 +145,17 @@ PinholeCamera::Parameters::cy(void) const
 bool
 PinholeCamera::Parameters::readFromYamlFile(const std::string& filename)
 {
-    cv::FileStorage fs(filename, cv::FileStorage::READ);
-
-    if (!fs.isOpened())
-    {
+    YAML::Node fs;
+    try {
+        fs = YAML::LoadFile(filename);
+    } catch (YAML::Exception &e) {
         return false;
     }
 
-    if (!fs["model_type"].isNone())
+    if ( fs["model_type"].as<std::string>() != "" )
     {
         std::string sModelType;
-        fs["model_type"] >> sModelType;
+        sModelType = fs["model_type"].as<std::string>();
 
         if (sModelType.compare("PINHOLE") != 0)
         {
@@ -163,21 +164,19 @@ PinholeCamera::Parameters::readFromYamlFile(const std::string& filename)
     }
 
     m_modelType = PINHOLE;
-    fs["camera_name"] >> m_cameraName;
-    m_imageWidth = static_cast<int>(fs["image_width"]);
-    m_imageHeight = static_cast<int>(fs["image_height"]);
+    m_cameraName = fs["camera_name"].as<std::string>();
+    m_imageWidth = fs["image_width"].as<int>();
+    m_imageHeight = fs["image_height"].as<int>();
 
-    cv::FileNode n = fs["distortion_parameters"];
-    m_k1 = static_cast<double>(n["k1"]);
-    m_k2 = static_cast<double>(n["k2"]);
-    m_p1 = static_cast<double>(n["p1"]);
-    m_p2 = static_cast<double>(n["p2"]);
+    m_k1 = fs["distortion_parameters"]["k1"].as<double>();
+    m_k2 = fs["distortion_parameters"]["k2"].as<double>();
+    m_p1 = fs["distortion_parameters"]["p1"].as<double>();
+    m_p2 = fs["distortion_parameters"]["p2"].as<double>();
 
-    n = fs["projection_parameters"];
-    m_fx = static_cast<double>(n["fx"]);
-    m_fy = static_cast<double>(n["fy"]);
-    m_cx = static_cast<double>(n["cx"]);
-    m_cy = static_cast<double>(n["cy"]);
+    m_fx = fs["projection_parameters"]["fx"].as<double>();
+    m_fy = fs["projection_parameters"]["fy"].as<double>();
+    m_cx = fs["projection_parameters"]["cx"].as<double>();
+    m_cy = fs["projection_parameters"]["cy"].as<double>();
 
     return true;
 }

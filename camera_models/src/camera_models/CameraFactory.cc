@@ -9,6 +9,7 @@
 #include "camodocal/camera_models/ScaramuzzaCamera.h"
 
 #include "ceres/ceres.h"
+#include <yaml-cpp/yaml.h>
 
 namespace camodocal
 {
@@ -95,18 +96,14 @@ CameraFactory::generateCamera( Camera::ModelType modelType, const std::string& c
 CameraPtr
 CameraFactory::generateCameraFromYamlFile( const std::string& filename )
 {
-    cv::FileStorage fs( filename, cv::FileStorage::READ );
-
-    if ( !fs.isOpened( ) )
-    {
-        return CameraPtr( );
-    }
+    YAML::Node fs = YAML::LoadFile(filename);
 
     Camera::ModelType modelType = Camera::MEI;
-    if ( !fs["model_type"].isNone( ) )
+
+    if ( fs["model_type"].as<std::string>() != "" )
     {
         std::string sModelType;
-        fs["model_type"] >> sModelType;
+        sModelType = fs["model_type"].as<std::string>();
 
         if ( boost::iequals( sModelType, "kannala_brandt" ) )
         {
